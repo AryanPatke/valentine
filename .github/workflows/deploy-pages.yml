@@ -1,0 +1,54 @@
+name: Deploy multi-branch to GitHub Pages
+
+on:
+  push:
+    branches: [main, weekend]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+
+      - name: Checkout weekend
+        uses: actions/checkout@v4
+        with:
+          ref: weekend
+          path: weekend
+
+      - name: Assemble site
+        run: |
+          mkdir _site
+          cp main/index.html main/styles.css main/script.js main/README.md _site/
+          mkdir _site/weekend
+          cp weekend/index.html weekend/styles.css weekend/script.js _site/weekend/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
